@@ -1,0 +1,415 @@
+{% if request.url_path contains 'data/' and request.url_path contains '.json' %}
+{% assign page_slug = request.url_path | split:'data/' | last | split:'.json' | first %}
+{% subpage page_slug with "liquid_for_json_response" %}
+{% else %}
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{ page_title }}</title>
+    <style>body {opacity: 1;transition: 1s opacity;}body.slow-reveal {opacity: 0;transition: none;}</style>
+    <link href="theme.scss" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.6.2/css/font-awesome.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Open+Sans:ital,wght@0,400;0,700;1,400;1,700&display=swap" rel="stylesheet">
+
+    {% capture stripe_js %}script src="https://js.stripe.com/{% endcapture %}{% capture stripe_js_required %}script data-cookieconsent="ignore" src="https://js.stripe.com/{% endcapture %}
+    {% capture recaptcha_js %}script src="https://www.recaptcha.net/{% endcapture %}{% capture recaptcha_js_required %}script data-cookieconsent="ignore" src="https://www.recaptcha.net/{% endcapture %}
+    {% if site.has_meta_image? and site.homepage.has_meta_image? and page.has_meta_image? == false %}
+      {{ content_for_header | replace:site.meta_image_url,site.homepage.meta_image_url | replace:stripe_js,stripe_js_required | replace:recaptcha_js,recaptcha_js_required }}
+    {% else %}
+      {{ content_for_header | replace:stripe_js,stripe_js_required | replace:recaptcha_js,recaptcha_js_required }}
+    {% endif %}
+
+    {% include "partial_default_page_description" %}
+
+    {% include "twitter_meta" %}
+
+    <script type="text/javascript">
+      NB.appConfig.userIsLoggedIn = {{request.logged_in?}};
+    </script>
+
+    {% include "partial_analytics_gtm" %}
+
+  </head>
+
+  {% include "liquid_assign_variables" %}
+
+  <body class="aware-theme v2-theme slow-reveal {{ page.page_class_name }} page-{{ request.template | replace: '_', '-' }} js" data-nation-slug="{{ nation_slug }}" data-country-code="{{ country_code }}">
+    {% include "partial_analytics_gtm_body" %}
+    {% assign feature_exists = false %}
+    {% if page.features_count > 0 or site.has_header_image? %}
+      {% unless page_tags_list contains '#admin_image_gallery#' %}
+        {% assign feature_exists = true %}
+      {% endunless %}
+    {% endif %}
+
+    {% include "nav" %}
+
+    {% if request.current_user.is_intern? %}
+      {% include "cp_nav" %}
+    {% endif %}
+    
+    {% unless page_tags_list contains "#admin_image_gallery#" %} 
+      {% if page.features_count > 0 %}
+        {% include "features" %}
+      {% elsif site.has_header_image? %}
+        {% include "partial_header_image" %}
+      {% endif %}
+    {% endunless %}
+
+    {% include "breadcrumbs" %}
+
+    {% unless page.is_homepage? %}
+    <div id="middle" class="py-4" style="{% if site.has_background_image? or page.background_image_url.size > 0 %}background:transparent;{% elsif page.features_count > 0 or site.has_header_image? %}background-color:#FFF{% endif %}" data-page-slug="{{ page.slug }}">
+      {% include "columns_1" %}
+    </div>
+    {% endunless %}
+
+    {% if page.is_homepage? and page[page.type_slug].content.size > 0 %}
+      <div class="container">
+        <div class="row py-5">
+          {% if page_tags_list contains '#admin_two_columns#' %}
+            <div class="column_div hide">{{ page.basic.content }}</div>
+            <div class="visible_column_div clearfix"></div>
+          {% elsif page.basic.content contains "<hr><hr>" %}
+            {{ page.basic.content  | split: "<hr><hr>" | first }}
+            {% include "partial_accordion_content" accordion_content: page.basic.content %}
+          {% else %}
+            {% unless page_tags_list contains "admin_hide_content" %}
+              <div class="text-content">{{ page.basic.content }}</div>
+            {% endunless %}
+          {% endif %}
+        </div>
+      </div>
+    {% endif %}
+
+    {% if page_tags_list contains '#admin_show_events_top_map_' %}
+      {% for tag in page.tags %}
+        {% if tag.slug contains "admin_show_events_top_map_" %}
+          {% assign calendar_slug = tag.slug | split:"admin_show_events_top_map_" | last %}
+        {% endif %}
+      {% endfor %}
+      {% if calendar_slug.size > 0 %}
+        {% subpage calendar_slug with "partial_calendar_map_section" %}
+      {% endif %}
+    {% endif %}
+
+    {% if page.is_homepage? == true and site.page_tags contains "homepage" %}
+      {% tag "homepage" with "homepage_widget" %}
+    {% endif %}
+
+    
+    {% if page.is_homepage? == true and page_tags_list contains "#admin_show_subpages_panel_" %}
+      {% assign subpages_panel_section_slug_list = "" %}
+      {% for tag in page.tags %}
+        {% if tag.slug contains "admin_show_subpages_panel_" %}
+          {% assign subpages_panel_section_slug = tag.slug | split:"admin_show_subpages_panel_" | last %}
+          {% assign subpages_panel_section_slug_list = subpages_panel_section_slug_list | append:subpages_panel_section_slug | append:"#" %}
+        {% endif %}
+      {% endfor %}
+      {% assign subpages_panel_section_slugs = subpages_panel_section_slug_list | split:"#" %}
+      {% include "partial_liquid_pages_loop" slugs: subpages_panel_section_slugs, partial: "partial_show_subpages_panel" %}
+    {% endif %}
+
+
+    {% if page.is_homepage? == true and page_tags_list contains "#admin_show_quote_" %}
+      {% assign quote_section_slug_list = "" %}
+      {% for tag in page.tags %}
+        {% if tag.slug contains "admin_show_quote_" %}
+          {% assign quote_section_slug = tag.slug | split:"admin_show_quote_" | last %}
+          {% assign quote_section_slug_list = quote_section_slug_list | append:quote_section_slug | append:"#" %}
+        {% endif %}
+      {% endfor %}
+      {% assign quote_section_slugs = quote_section_slug_list | split:"#" %}
+      {% include "partial_liquid_pages_loop" slugs: quote_section_slugs, partial: "partial_quote" %}
+    {% endif %}
+
+    {%  if page.is_homepage? == true %}
+    {% subpage "test_icon" with "icon" %}
+    {% endif %}
+
+    {% if page_tags_list contains '#admin_latest_news_section#' and page.is_homepage? == true %}
+      {% unless page_tags_list contains '#admin_hide_latest_news_section#' %}
+        {% include "partial_latest_news" %}
+      {% endunless %}
+    {% endif %}
+
+    {% if page_tags_list contains '#admin_show_pdf_gallery#' and page.is_homepage? == true %}
+      {% include "partial_pdf_gallery" %}
+    {% endif %}
+
+    {% if page_tags_list contains "#admin_show_slider_" %}
+      {% assign slider_slug_list = "" %}
+      {% for tag in page.tags %}
+        {% if tag.slug contains "admin_show_slider_" %}
+          {% assign slider_slug = tag.slug | split:"admin_show_slider_" | last %}
+          {% assign slider_slug_list = slider_slug_list | append:slider_slug | append:"#" %}
+        {% endif %}
+      {% endfor %}
+      {% assign slider_slugs = slider_slug_list | split:"#" %}
+      {% include "partial_liquid_pages_loop" slugs: slider_slugs, partial: "partial_slider" %}
+    {% endif %}
+
+    {% if page_tags_list contains "#admin_show_panel_content_" %}
+      {% assign panel_content_slug_list = "" %}
+      {% for tag in page.tags %}
+        {% if tag.slug contains "admin_show_panel_content_" %}
+          {% assign panel_content_slug = tag.slug | split:"admin_show_panel_content_" | last %}
+          {% assign panel_content_slug_list = panel_content_slug_list | append:panel_content_slug | append:"#" %}
+        {% endif %}
+      {% endfor %}
+      {% assign panel_content_slugs = panel_content_slug_list | split:"#" %}
+      {% include "partial_liquid_pages_loop" slugs: panel_content_slugs, partial: "partial_panel_content" %}
+    {% endif %}
+
+    {% unless page.is_homepage?  == true and page_tags_list contains "#admin_show_subpages_panel_" %}
+      {% assign subpages_panel_section_slug_list = "" %}
+      {% for tag in page.tags %}
+        {% if tag.slug contains "admin_show_subpages_panel_" %}
+          {% assign subpages_panel_section_slug = tag.slug | split:"admin_show_subpages_panel_" | last %}
+          {% assign subpages_panel_section_slug_list = subpages_panel_section_slug_list | append:subpages_panel_section_slug | append:"#" %}
+        {% endif %}
+      {% endfor %}
+      {% assign subpages_panel_section_slugs = subpages_panel_section_slug_list | split:"#" %}
+      {% include "partial_liquid_pages_loop" slugs: subpages_panel_section_slugs, partial: "partial_show_subpages_panel" %}
+    {% endunless %}
+
+    {% if page_tags_list contains "#admin_program_" %}
+      {% assign program_slug_list = "" %}
+      {% for tag in page.tags %}
+        {% if tag.slug contains "admin_program_" %}
+          {% assign program_slug = tag.slug | split:"admin_program_" | last %}
+          {% assign program_slug_list = program_slug_list | append:program_slug | append:"#" %}
+        {% endif %}
+      {% endfor %}
+      {% assign program_slugs = program_slug_list | split:"#" %}
+      {% include "partial_liquid_pages_loop" slugs: program_slugs, partial: "partial_program" %}
+    {% endif %}
+
+    {% if page_tags_list contains "#admin_countdown_" and page.type_slug != 'event' %}
+      {% assign countdown_slug_list = "" %}
+      {% for tag in page.tags %}
+        {% if tag.slug contains "admin_countdown_" %}
+          {% assign countdown_slug = tag.slug | split:"admin_countdown_" | last %}
+          {% assign countdown_slug_list = countdown_slug_list | append:countdown_slug | append:"#" %}
+        {% endif %}
+      {% endfor %}
+      {% assign countdown_slugs = countdown_slug_list | split:"#" %}
+      {% include "partial_liquid_pages_loop" slugs: countdown_slugs, partial: "partial_countdown" %}
+    {% endif %}
+
+    {% if page_tags_list contains '#admin_show_donation_panel#' %}
+      {% subpage site.donation_page.slug with "partial_donation_panel" %}
+    {% endif %}
+
+    {% if page_tags_list contains "#admin_show_background_video_" %}
+      {% assign background_video_section_slug_list = "" %}
+      {% for tag in page.tags %}
+        {% if tag.slug contains "admin_show_background_video_" %}
+          {% assign background_video_section_slug = tag.slug | split:"admin_show_background_video_" | last %}
+          {% assign background_video_section_slug_list = background_video_section_slug_list | append:background_video_section_slug | append:"#" %}
+        {% endif %}
+      {% endfor %}
+      {% assign background_video_section_slugs = background_video_section_slug_list | split:"#" %}
+      {% include "partial_liquid_pages_loop" slugs: background_video_section_slugs, partial: "partial_background_video" %}
+    {% endif %}
+
+    {% unless page.is_homepage? == true and page_tags_list contains "#admin_show_quote_" %}
+      {% assign quote_section_slug_list = "" %}
+      {% for tag in page.tags %}
+        {% if tag.slug contains "admin_show_quote_" %}
+          {% assign quote_section_slug = tag.slug | split:"admin_show_quote_" | last %}
+          {% assign quote_section_slug_list = quote_section_slug_list | append:quote_section_slug | append:"#" %}
+        {% endif %}
+      {% endfor %}
+      {% assign quote_section_slugs = quote_section_slug_list | split:"#" %}
+      {% include "partial_liquid_pages_loop" slugs: quote_section_slugs, partial: "partial_quote" %}
+    {% endunless %}
+
+    {% if page.is_homepage? %}
+      {% unless site.has_donation_page? == false or page_tags_list contains '#admin_hide_donation_panel#' %}
+        {% subpage site.donation_page.slug with "partial_donation_panel" %}
+      {% endunless %}
+    {% endif %}
+    
+    {% if page_tags_list contains "#admin_show_icons#" %}
+    {% subpage "test_icon" with "icon" %}
+    {% endif %}
+
+    {% if page_tags_list contains "#admin_show_sms_tool_" %}
+      {% for tag in page.tags %}
+        {% if tag.slug contains "admin_show_sms_tool_" %}
+          {% assign sms_tool_slug = tag.slug | split:"admin_show_sms_tool_" | last %}
+          {% break %}
+        {% endif %}
+      {% endfor %}
+      {% include "partial_liquid_pages_loop" slugs:sms_tool_slug, partial:"partial_sms_tool" %}
+    {% endif %}
+
+    {% if page_tags_list contains "#admin_show_profile_page_" %}
+      {% assign profile_section_slug_list = "" %}
+      {% for tag in page.tags %}
+        {% if tag.slug contains "admin_show_profile_page_" %}
+          {% assign profile_section_slug = tag.slug | split:"admin_show_profile_page_" | last %}
+          {% assign profile_section_slug_list = profile_section_slug_list | append:profile_section_slug | append:"#" %}
+        {% endif %}
+      {% endfor %}
+      {% assign profile_section_slugs = profile_section_slug_list | split:"#" %}
+      {% include "partial_liquid_pages_loop" slugs: profile_section_slugs, partial: "partial_profile_subpages" %}
+    {% endif %}
+
+    {% if page_tags_list contains '#admin_show_video_gallery#' %}
+      {% include "partial_video_gallery" %}
+    {% endif %}
+
+    {% if page_tags_list contains '#admin_show_video_gallery_' %}
+      {% for tag in page.tags %}
+        {% if tag.slug contains "admin_show_video_gallery_" %}
+          {% assign video_gallery_slug = tag.slug | split:"admin_show_video_gallery_" | last %}
+        {% endif %}
+      {% endfor %}
+      {% if video_gallery_slug.size > 0 %}
+        {% subpage video_gallery_slug with "partial_video_gallery" %}
+      {% endif %}
+    {% endif %}
+
+    {% if page_tags_list contains '#admin_latest_news_section#' and page.is_homepage? == false %}
+      {% unless page_tags_list contains '#admin_hide_latest_news_section#' %}
+        {% include "partial_latest_news" %}
+      {% endunless %}
+    {% endif %}
+
+
+    {% if page_tags_list contains '#admin_show_events_map_' %}
+      {% for tag in page.tags %}
+        {% if tag.slug contains "admin_show_events_map_" %}
+          {% assign calendar_slug = tag.slug | split:"admin_show_events_map_" | last %}
+        {% endif %}
+      {% endfor %}
+      {% if calendar_slug.size > 0 %}
+        {% subpage calendar_slug with "partial_calendar_map_section" %}
+      {% endif %}
+    {% endif %}
+
+    {% if page_tags_list contains '#admin_show_pdf_gallery#' and page.is_homepage? == false %}
+      {% include "partial_pdf_gallery" %}
+    {% endif %}
+
+    {% if page_tags_list contains '#admin_pdf_gallery_' %}
+      {% for tag in page.tags %}
+        {% if tag.slug contains "admin_pdf_gallery_" %}
+          {% assign pdf_slug = tag.slug | split:"admin_pdf_gallery_" | last %}
+        {% endif %}
+      {% endfor %}
+      {% if pdf_slug.size > 0 %}
+        {% subpage pdf_slug with "partial_pdf_gallery" %}
+      {% endif %}
+    {% endif %}
+
+    {% if page_tags_list contains "#admin_show_embed_" %}
+      {% assign embed_section_slug_list = "" %}
+      {% for tag in page.tags %}
+        {% if tag.slug contains "admin_show_embed_" %}
+          {% assign embed_section_slug = tag.slug | split:"admin_show_embed_" | last %}
+          {% assign embed_section_slug_list = embed_section_slug_list | append:embed_section_slug | append:"#" %}
+        {% endif %}
+      {% endfor %}
+      {% assign embed_section_slugs = embed_section_slug_list | split:"#" %}
+      {% include "partial_liquid_pages_loop" slugs: embed_section_slugs, partial: "partial_embed_excerpt" %}
+    {% endif %}
+
+    {% if page_tags_list contains '#admin_show_subpages#' %}
+      {% include "partial_show_subpages" %}
+    {% endif %}
+
+    {% if page_tags_list contains '#admin_show_image_gallery#' %}
+      {% include "partial_image_gallery" %}
+    {% endif %}
+
+    {% if page_tags_list contains '#admin_image_gallery#' %}
+      {% include "partial_feature_image_gallery" %}
+    {% endif %}
+
+    {% if page_tags_list contains '#admin_feature_video_section#' %}
+
+      {% capture check_feature_video %}
+        {% tag "admin_feature_video" with "partial_feature_video" %}
+      {% endcapture %}
+
+      {% assign error = check_feature_video | downcase %}
+
+      {% unless error contains "liquid syntax error" or error contains "liquid error" or error contains "nil:nilclass" or error contains "error in tag" %}
+        {% tag "admin_feature_video" with "partial_feature_video" %}
+      {% endunless %}
+
+    {% endif %}
+ 
+    {% if page_tags_list contains '#admin_show_logo#' %}
+        {% subpage "test_logos" with "logos" %}
+    {% endif %}
+
+    {% if page_tags_list contains '#admin_show_signup_bar#' %}
+      {% include "partial_signup_bar" %}
+    {% endif %}
+
+    {% if page_tags_list contains '#admin_show_share_bar#' %}
+      {% include "partial_share_bar" %}
+    {% endif %}
+
+    {% if page_tags_list contains '#admin_show_share_parent_bar#' %}
+      {% include "partial_share_parent_bar" %}
+    {% endif %}
+    
+    {% if page_tags_list contains '#admin_show_search_page#' %}
+      {% include "partial_search_page" %}
+    {% endif %}
+
+    {% if page_tags_list contains '#admin_show_search_bar#' %}
+      {% include "partial_search_bar" %}
+    {% endif %}
+
+    {% if page_tags_list contains '#admin_supporterbase#' %}
+      <section>
+        <div class="container pb-2">
+          {% include "partial_calendar_map" %}
+        </div>
+      </section>
+    {% endif %}
+
+    {% if request.url contains '?thanks=' %}
+      {% assign thanks_slug = request.url | split:"?thanks=" | last | remove: "/" %}
+      {% if thanks_slug.size > 0 %}
+        {% subpage thanks_slug with "partial_thanks_modal" %}
+      {% else %}
+        {% include "partial_thanks_modal" %}
+      {% endif %}
+    {% endif %}
+
+    {% include "signup_bar" %}
+
+    {% comment %}
+    {% if page.id > 0 %}
+      {% include "partial_twitter" %}
+    {% endif %}
+    {% endcomment %}
+
+    {% include "footer" %}
+
+    {% include "liquid_background_image" %}
+
+    {{ content_for_footer }}
+    {% unless content_for_footer contains "assets/tinymce-" %}
+    <script src="https://cdn.campaignnow.co/tinymce.min.js"></script>
+    {% endunless %}
+
+    {% if page.type_slug == 'calendar' or page_tags_list contains '#admin_supporterbase#' or page_tags_list contains '#admin_show_events_map_' or page_tags_list contains '#admin_show_events_top_map_' %}
+    <script type='text/javascript' src='//maps.googleapis.com/maps/api/js?libraries=places&v=3&key={{google_maps_api_token}}'></script>
+    {% endif %}
+
+    <script src="main.min.js"></script>
+    
+  </body>
+</html>
+{% endif %}
